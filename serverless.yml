@@ -1,6 +1,5 @@
 org: polomaru
 service: api-web-scraping
-
 provider:
   name: aws
   runtime: nodejs18.x
@@ -8,20 +7,16 @@ provider:
   timeout: 30
   environment:
     TABLE_NAME: TareaWebScrapping
-  iam:
-    role: arn:aws:iam::157403467473:role/LabRole
-  layers:
-    - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:15
 
 functions:
   scrape_table:
-    handler: scrap.handler
+    handler: scrap.handler     # archivo scrap.js → module.exports.handler
     package:
       include:
-        - ./**
+        - scrap.js
     events:
       - http:
-          path: /scrape/table
+          path: scrape/table
           method: get
           cors: true
 
@@ -38,3 +33,9 @@ resources:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+
+layers:
+  chromeLambda:
+    path: chrome-aws-lambda-layer-package # si usas un layer empaquetado con chrome-aws-lambda
+    compatibleRuntimes:
+      - nodejs18.x
