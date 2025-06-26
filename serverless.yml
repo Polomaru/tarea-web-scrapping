@@ -8,7 +8,6 @@ provider:
   timeout: 30
   environment:
     TABLE_NAME: TareaWebScrapping
-    AWS_REGION: us-east-1
   iam:
     role: arn:aws:iam::157403467473:role/LabRole
   layers:
