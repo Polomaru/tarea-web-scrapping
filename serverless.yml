@@ -21,6 +21,9 @@ functions:
           path: scrape/table
           method: get
           cors: true
+    package:
+      include:
+        - lib/**
 
 resources:
   Resources:
