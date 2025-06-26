@@ -1,14 +1,15 @@
-const AWS = require('aws-sdk');
-const chromium = require('chrome-aws-lambda');
-const puppeteer = require('puppeteer-core');
-const { randomUUID } = require('crypto');
+import fs from "fs";
+import { randomUUID } from "crypto";
+import AWS from "aws-sdk";
+import chromium from "chrome-aws-lambda";
+import puppeteer from "puppeteer-core";
 
-// Configurar DynamoDB DocumentClient
+// DynamoDB DocumentClient
 const dynamodb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
-module.exports.handler = async (event, context) => {
-  // 1) Lanzar Chrome headless via chrome-aws-lambda
+export const handler = async (event) => {
+  // 1) Launch headless Chrome
   const browser = await puppeteer.launch({
     args: chromium.args,
     defaultViewport: chromium.defaultViewport,
@@ -19,11 +20,11 @@ module.exports.handler = async (event, context) => {
   const url = 'https://ultimosismo.igp.gob.pe/ultimo-sismo/sismos-reportados';
   const selector = 'table.table.table-hover.table-bordered.table-light.border-white.w-100';
 
-  // 2) Cargar página y esperar tabla
+  // 2) Navigate and wait
   await page.goto(url, { waitUntil: 'networkidle2' });
   await page.waitForSelector(selector, { timeout: 15000 });
 
-  // 3) Extraer datos de la tabla
+  // 3) Scrape table data
   const data = await page.$$eval(
     `${selector} tbody tr`,
     (rows, sel) => {
@@ -32,39 +33,44 @@ module.exports.handler = async (event, context) => {
       return rows.map((tr, idx) => {
         const cells = Array.from(tr.querySelectorAll('td'));
         const obj = {};
-        headers.forEach((h, i) => { obj[h] = (cells[i]?.textContent.trim() || ''); });
+        headers.forEach((h, i) => { obj[h] = cells[i]?.textContent.trim() || ''; });
         obj['#'] = idx + 1;
-        obj['id'] = crypto.randomUUID();
         return obj;
       });
     },
     selector
   );
+
   await browser.close();
 
-  // 4) Limpiar DynamoDB existente
+  // 4) Clear existing items
   const existing = await dynamodb.scan({ TableName: TABLE_NAME }).promise();
   if (existing.Items && existing.Items.length) {
-    const deletes = existing.Items.map(item => ({ DeleteRequest: { Key: { id: item.id } } }));
-    for (let i = 0; i < deletes.length; i += 25) {
-      const batch = deletes.slice(i, i + 25);
+    const batches = [];
+    for (let i = 0; i < existing.Items.length; i += 25) {
+      batches.push(existing.Items.slice(i, i + 25).map(item => ({ DeleteRequest: { Key: { id: item.id } } })));  
+    }
+    for (const batch of batches) {
       await dynamodb.batchWrite({ RequestItems: { [TABLE_NAME]: batch } }).promise();
     }
   }
 
-  // 5) Insertar nuevos datos en lotes de 25
+  // 5) Insert new data
+  const putBatches = [];
   for (let i = 0; i < data.length; i += 25) {
-    const batch = data.slice(i, i + 25).map(item => ({ PutRequest: { Item: item } }));
+    putBatches.push(data.slice(i, i + 25).map(item => ({ PutRequest: { Item: { ...item, id: randomUUID() } } }));
+  }
+  for (const batch of putBatches) {
     await dynamodb.batchWrite({ RequestItems: { [TABLE_NAME]: batch } }).promise();
   }
 
-  // 6) Retornar datos en la respuesta
+  // 6) Return scraped data
   return {
     statusCode: 200,
     headers: {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': '*'
+      'Access-Control-Allow-Origin': '*',
     },
-    body: JSON.stringify(data)
+    body: JSON.stringify(data.map((item, idx) => ({ ...item, id: randomUUID(), '#': idx + 1 }))),
   };
 };
