@@ -1,5 +1,6 @@
 org: polomaru
 service: api-web-scraping
+
 provider:
   name: aws
   runtime: nodejs18.x
@@ -10,10 +11,7 @@ provider:
 
 functions:
   scrape_table:
-    handler: scrap.handler     # archivo scrap.js → module.exports.handler
-    package:
-      include:
-        - scrap.js
+    handler: scrap.handler   # scrap.js → module.exports.handler
     events:
       - http:
           path: scrape/table
@@ -33,9 +31,3 @@ resources:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
-
-layers:
-  chromeLambda:
-    path: chrome-aws-lambda-layer-package # si usas un layer empaquetado con chrome-aws-lambda
-    compatibleRuntimes:
-      - nodejs18.x
