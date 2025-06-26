@@ -8,6 +8,8 @@ provider:
   timeout: 28
   environment:
     TABLE_NAME: TareaWebScrapping
+  iam:
+    role: arn:aws:iam::157403467473:role/LabRole
 
 functions:
   scrape_table:
