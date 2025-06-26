@@ -1,4 +1,3 @@
-org: polomaru
 service: api-web-scraping
 
 provider:
@@ -10,11 +9,12 @@ provider:
     TABLE_NAME: TareaWebScrapping
   iam:
     role: arn:aws:iam::157403467473:role/LabRole
+
 functions:
   scrape_table:
-    handler: scrap.handler
-    # Aquí referenciamos el chrome-aws-lambda layer público directamente
+    handler: scrap.handler     # apunta a scrap.js → module.exports.handler
     layers:
+      # layer público que incluye Chromium + libs nativas
       - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:24
     events:
       - http:
