@@ -10,12 +10,12 @@ provider:
     TABLE_NAME: TareaWebScrapping
   iam:
     role: arn:aws:iam::157403467473:role/LabRole
-layers:
-  chromeAwsLambda:
-    arn: arn:aws:lambda:us-east-1:157403467473:layer:chrome-aws-lambda:24
 functions:
   scrape_table:
-    handler: scrap.handler   # scrap.js → module.exports.handler
+    handler: scrap.handler
+    # Aquí referenciamos el chrome-aws-lambda layer público directamente
+    layers:
+      - arn:aws:lambda:us-east-1:764866452798:layer:chrome-aws-lambda:24
     events:
       - http:
           path: scrape/table
