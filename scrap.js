@@ -1,15 +1,15 @@
 import AWS from 'aws-sdk';
 import puppeteer from 'puppeteer-core';
 
-// Configurar DynamoDB DocumentClient
-const dynamodb = new AWS.DynamoDB.DocumentClient({ region: process.env.AWS_REGION });
+// Configurar DynamoDB DocumentClient (usa región de entorno de Lambda)
+const dynamodb = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 
-export const handler = async (event) => {
+export const handler = async () => {
   // 1) Lanzar Puppeteer usando chrome-aws-lambda en Lambda
   const browser = await puppeteer.launch({
     args: ['--no-sandbox', '--disable-setuid-sandbox'],
-    executablePath: process.env.CHROME_PATH || process.env.LAMBDA_STAGE
+    executablePath: process.env.LAMBDA_TASK_ROOT
       ? '/opt/headless-chromium'
       : '/usr/bin/chromium-browser',
     headless: true,
@@ -31,7 +31,9 @@ export const handler = async (event) => {
       return trs.map((tr, i) => {
         const cells = Array.from(tr.querySelectorAll('td'));
         const obj = {};
-        headers.forEach((h, idx) => { obj[h] = cells[idx]?.textContent.trim() || ''; });
+        headers.forEach((h, idx) => {
+          obj[h] = cells[idx]?.textContent.trim() || '';
+        });
         obj['#'] = i + 1;
         obj['id'] = crypto.randomUUID();
         return obj;
@@ -62,6 +64,9 @@ export const handler = async (event) => {
   return {
     statusCode: 200,
     body: JSON.stringify(rows),
-    headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }
+    headers: {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    }
   };
 };
