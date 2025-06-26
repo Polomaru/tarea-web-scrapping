@@ -23,6 +23,10 @@ functions:
           cors: true
     package:
       include:
+        - scrap.js
+        - package.json
+        - package-lock.json
+        - node_modules/**
         - lib/**
 
 resources:
